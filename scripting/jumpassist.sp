@@ -33,6 +33,8 @@ bool g_bSuperman[MAXPLAYERS + 1];
 bool g_bMapSetUsed;
 bool g_bSaveLoc;
 bool g_bExplosions[MAXPLAYERS + 1];
+bool g_bUnkillable[MAXPLAYERS + 1];
+bool g_bHPRegen[MAXPLAYERS + 1];
 
 static const char g_sWebsite[128] = "http:// www.jump.tf/";
 static const char g_sForum[128] = "http://tf2rj.com/forum/";
@@ -49,6 +51,7 @@ int g_iCPCount;
 int g_iForceTeam = 1;
 int g_iCPsTouched[MAXPLAYERS + 1];
 int g_iInitialGameType;
+int g_iSpeedrunStatus[32];
 
 float g_fOrigin[MAXPLAYERS + 1][3];
 float g_fAngles[MAXPLAYERS + 1][3];
@@ -83,6 +86,7 @@ StringMap g_smCaptureAreaName;
 #include "jumpassist/teleporting.sp"
 #include "jumpassist/hide.sp"
 #include "jumpassist/sl.sp"
+#include "jumpassist/speedrun.sp"
 
 public Plugin myinfo = {
   name = "[TF2] Jump Assist", 
@@ -157,7 +161,7 @@ public void OnPluginStart() {
   RegConsoleCmd("sm_spec", cmdSpec, "Spectate a player.");
   RegConsoleCmd("sm_spec_ex", cmdSpecLock, "Spectate a player, even through their death");
   RegConsoleCmd("sm_speclock", cmdSpecLock, "Spectate a player, even through their death");
-
+  
   RegAdminCmd("sm_fspec", cmdForceSpec, ADMFLAG_GENERIC, "Force a player to spectate another player.");
   
   // Race
@@ -167,7 +171,25 @@ public void OnPluginStart() {
   RegConsoleCmd("sm_specrace", cmdRaceSpec, "Spectate a race.");
   RegConsoleCmd("sm_racelist", cmdRaceList, "Display race list");
   RegConsoleCmd("sm_raceinfo", cmdRaceInfo, "Display information about the race you are in.");
-
+  
+  // Speedruns
+  RegAdminCmd("sm_setstart", cmdSetStart, ADMFLAG_GENERIC, "Sets the map start location for speedrunning");
+  RegAdminCmd("sm_addzone", cmdAddZone, ADMFLAG_GENERIC, "Adds a checkpoint or end zone for speedrunning");
+  RegAdminCmd("sm_clearzones", cmdClearZones, ADMFLAG_GENERIC, "Deletes all zones on the current map");
+  RegAdminCmd("sm_cleartimes", cmdClearTimes, ADMFLAG_GENERIC, "Deletes all times on the current map");
+  RegAdminCmd("sm_sr_force_reload", cmdSpeedrunForceReload, ADMFLAG_GENERIC, "Deletes all times on the current map");
+  RegConsoleCmd("sm_showzones", cmdShowZones, "Shows all zones of the map");
+  RegConsoleCmd("sm_rmtime", cmdRemoveTime, "Removes your time on the map");
+  RegConsoleCmd("sm_showzone", cmdShowZone, "Shows the current zone and says what zone it is");
+  RegConsoleCmd("sm_sz", cmdShowZone, "Shows the current zone and says what zone it is");
+  RegConsoleCmd("sm_speedrun", cmdToggleSpeedrun, "Enables/disables speedrunning");
+  RegConsoleCmd("sm_sr", cmdToggleSpeedrun, "Enables/disables speedrunning");
+  RegConsoleCmd("sm_stopspeedrun", cmdDisableSpeedrun, "Disables speedrunning");
+  RegConsoleCmd("sm_pr", cmdShowPR, "Shows your personal record");
+  RegConsoleCmd("sm_wr", cmdShowWR, "Shows the map record");
+  RegConsoleCmd("sm_top", cmdShowTop, "Shows the map record");
+  RegConsoleCmd("sm_pi", cmdShowPlayerInfo, "Shows the player's runs");
+  
   RegAdminCmd("sm_serverrace", cmdRaceServer, ADMFLAG_GENERIC, "Invite everyone to a server wide race");
   
   // Admin
@@ -352,8 +374,8 @@ public void OnConfigsExecuted() {
   FindConVar("sv_noclipspeed").SetFloat(4.0);
   FindConVar("tf_weapon_criticals").SetInt(0, true);
   FindConVar("tf_sentrygun_ammocheat").SetInt(1);
-
-	g_cvarHostname = FindConVar("hostname");
+  
+  g_cvarHostname = FindConVar("hostname");
   g_cvarWaitingForPlayers = FindConVar("mp_waitingforplayers_time");
 }
 
@@ -391,12 +413,23 @@ public void OnClientPostAdminCheck(int client) {
   LoadPlayerProfile(client);
 }
 
+public void SDKHook_OnWeaponEquipPost(int client, int weapon) {
+	if (IsValidClient(client)) {
+		for (int i = 0; i < 3; i++) {
+			g_iClientWeapons[client][i] = GetPlayerWeaponSlot(client, i);
+		}
+	}
+}
+
 public void OnGameFrame() {
   for (int i = 1; i <= MaxClients; ++i) {
     if (IsClientInGame(i)) {
       g_iButtons[i] = GetClientButtons(i);
     }
   }
+	if (cvarSpeedrunEnabled.BoolValue) {
+		SpeedrunOnGameFrame();
+	}
 }
 
 public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3], float angles[3], int &weapon, 
@@ -1778,7 +1811,7 @@ public int menuHandlerJAHelp(Menu menu, MenuAction action, int client, int choic
     panel.Send(client, menuHandlerJAHelpSubMenu, 15);
     delete panel;
   }
-	return 0;
+  return 0;
 }
 
 public int menuHandlerJAHelpSubMenu(Menu menu, MenuAction action, int param1, int param2) {
@@ -1789,7 +1822,7 @@ public int menuHandlerJAHelpSubMenu(Menu menu, MenuAction action, int param1, in
       }
     }
   }
-	return 0;
+  return 0;
 }
 
 /**
@@ -1915,20 +1948,20 @@ void PrintWelcomeMessage(int client, const char[] format, any...) {
 
 public Action timerSpawnedBool(Handle timer, int client) {
   g_bJustSpawned[client] = false;
-	return Plugin_Continue;
+  return Plugin_Continue;
 }
 
 public Action timerMapSetUsed(Handle timer) {
   g_bMapSetUsed = false;
-	return Plugin_Continue;
+  return Plugin_Continue;
 }
 
 public Action timerUnfreeze(Handle timer, int client) {
   SetEntityFlags(client, GetEntityFlags(client) & ~(FL_ATCONTROLS | FL_FROZEN));
-	return Plugin_Continue;
+  return Plugin_Continue;
 }
 
 public Action timerUnpauseTeleport(Handle timer, int client) {
   g_bTelePaused[client] = true;
-	return Plugin_Continue;
+  return Plugin_Continue;
 } 

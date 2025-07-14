@@ -257,10 +257,10 @@ public Action timerRecentTargetCooldown(Handle timer, int client) {
   if (g_aGoToRecent[client].Length) {
     g_aGoToRecent[client].Erase(0);
   }
-	return Plugin_Continue;
+  return Plugin_Continue;
 }
 
 public Action timerGoToCooldown(Handle timer, int client) {
   g_bGoToCooldown[client] = false;
-	return Plugin_Continue;
+  return Plugin_Continue;
 } 
