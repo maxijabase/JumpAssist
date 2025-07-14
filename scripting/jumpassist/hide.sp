@@ -308,7 +308,7 @@ public Action hookTouch(int entity, int other) {
    ------------------------------- Internal Functions
 */
 
-bool CheckHooks() {
+void CheckHooks() {
   for (int i = 1; i <= MaxClients; ++i) {
     if (IsClientInGame(i) && g_bHide[i]) {
       g_bHooked = true;

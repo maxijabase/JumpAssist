@@ -291,6 +291,7 @@ int menuHandlerRaceCP(Menu menu, MenuAction action, int param1, int param2) {
       delete menu;
     }
   }
+  return 0;
 }
 
 int menuHandlerServerRaceCP(Menu menu, MenuAction action, int param1, int param2) {
@@ -430,14 +431,14 @@ public int panelHandlerInvites(Menu menu, MenuAction action, int param1, int par
   
   if (!IsClientInGame(leader)) {
     g_iRaceID[target] = 0;
-    return;
+    return 0;
   }
   
   switch (param2) {
     case 1: {
       if (HasRaceStarted(leader)) {
         PrintJAMessage(leader, "This race has already"...cTheme2..." started\x01.");
-        return;
+        return 0;
       }
       LeaveRace(target);
       g_iRaceID[target] = leader;
@@ -454,6 +455,7 @@ public int panelHandlerInvites(Menu menu, MenuAction action, int param1, int par
   }
   
   g_bWaitingInvite[target] = false;
+  return 0;
 }
 
 void displayRaceTimesMenu(int client, int clientToShow) {
@@ -557,7 +559,7 @@ void displayRaceInfoPanel(int client, int clientToShow) {
 }
 
 public int panelHandlerDoNothing(Menu menu, MenuAction action, int param1, int param2) {
-  // Do nothing.
+  return 0;
 }
 
 /* ======================================================================
@@ -630,6 +632,7 @@ public Action RaceCountDown(Handle timer, int raceID) {
     );
   
   PrintToRaceEx(raceID, message);
+  return Plugin_Continue;
 }
 
 public Action timerPostRace1(Handle timer, DataPack dp) {
@@ -638,6 +641,7 @@ public Action timerPostRace1(Handle timer, DataPack dp) {
   CreateTimer(5.0, timerPostRace2, dp);
   
   PrintJAMessage(client, cTheme2..."Restoring\x01 pre-race"...cTheme2..." status\x01 in 5 seconds.");
+  return Plugin_Continue;
 }
 
 public Action timerPostRace2(Handle timer, DataPack dp) {
@@ -656,6 +660,7 @@ public Action timerPostRace2(Handle timer, DataPack dp) {
   }
   
   PostRaceClientRestore(client);
+  return Plugin_Continue;
 }
 
 char[] GetCPNameByIndex(int index) {

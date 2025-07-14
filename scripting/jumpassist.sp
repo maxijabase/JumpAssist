@@ -2,9 +2,7 @@
 #pragma semicolon 1
 
 #define PLUGIN_VERSION "2.4.8"
-#define PLUGIN_NAME "[TF2] Jump Assist"
-#define PLUGIN_AUTHOR "JoinedSenses (Original author: rush, with previous updates from nolem and happs)"
-#define PLUGIN_DESCRIPTION "Tools to run a jump server with ease."
+
 #define MAX_CAP_POINTS 32
 #define WELCOMEPREFIX "\x07FFA500[\x03+\x07FFA500] "
 
@@ -19,64 +17,63 @@
 #define REQUIRE_PLUGIN
 #include <jslib>
 
-bool
-g_bLateLoad, 
-g_bFeaturesEnabled[MAXPLAYERS + 1], 
-g_bCPFallback, 
-g_bHideMessage[MAXPLAYERS + 1], 
-g_bIsPreviewing[MAXPLAYERS + 1], 
-g_bAmmoRegen[MAXPLAYERS + 1], 
-g_bHardcore[MAXPLAYERS + 1], 
-g_bCPTouched[MAXPLAYERS + 1][MAX_CAP_POINTS], 
-g_bJustSpawned[MAXPLAYERS + 1], 
-g_bTelePaused[MAXPLAYERS + 1], 
-g_bUsedReset[MAXPLAYERS + 1], 
-g_bBeatTheMap[MAXPLAYERS + 1], 
-g_bSuperman[MAXPLAYERS + 1], 
-g_bMapSetUsed, 
-g_bSaveLoc, 
-g_bExplosions[MAXPLAYERS + 1];
-static const char
-g_sWebsite[128] = "http:// www.jump.tf/", 
-g_sForum[128] = "http://tf2rj.com/forum/", 
-g_sJumpAssist[128] = "http://tf2rj.com/forum/index.php?topic=854.0";
-char
-g_sCurrentMap[64], 
-g_sClientSteamID[MAXPLAYERS + 1][32];
-int
-g_iLastTeleport[MAXPLAYERS + 1], 
-g_iClientTeam[MAXPLAYERS + 1], 
-g_iClientWeapons[MAXPLAYERS + 1][3], 
-g_iIntelCarrier, 
-g_iCPCount, 
-g_iForceTeam = 1, 
-g_iCPsTouched[MAXPLAYERS + 1], 
-g_iInitialGameType;
-float
-g_fOrigin[MAXPLAYERS + 1][3], 
-g_fAngles[MAXPLAYERS + 1][3], 
-g_fLastSavePos[MAXPLAYERS + 1][3], 
-g_fLastSaveAngles[MAXPLAYERS + 1][3];
-TFClassType
-g_TFClientClass[MAXPLAYERS + 1];
-ConVar
-g_cvarHostname, 
-g_cvarWelcomeMsg, 
-g_cvarWaitingForPlayers;
-Cookie
-g_hJAMessageCookie, 
-g_hExplosionCookie;
-GlobalForward
-g_hForwardSKeys;
-ArrayList
-g_aNoFuncRegen;
-Database
-g_Database;
-StringMap
-g_smCapturePoint, 
-g_smCapturePointName, 
-g_smCaptureArea, 
-g_smCaptureAreaName;
+bool g_bLateLoad;
+bool g_bFeaturesEnabled[MAXPLAYERS + 1];
+bool g_bCPFallback;
+bool g_bHideMessage[MAXPLAYERS + 1];
+bool g_bIsPreviewing[MAXPLAYERS + 1];
+bool g_bAmmoRegen[MAXPLAYERS + 1];
+bool g_bHardcore[MAXPLAYERS + 1];
+bool g_bCPTouched[MAXPLAYERS + 1][MAX_CAP_POINTS];
+bool g_bJustSpawned[MAXPLAYERS + 1];
+bool g_bTelePaused[MAXPLAYERS + 1];
+bool g_bUsedReset[MAXPLAYERS + 1];
+bool g_bBeatTheMap[MAXPLAYERS + 1];
+bool g_bSuperman[MAXPLAYERS + 1];
+bool g_bMapSetUsed;
+bool g_bSaveLoc;
+bool g_bExplosions[MAXPLAYERS + 1];
+
+static const char g_sWebsite[128] = "http:// www.jump.tf/";
+static const char g_sForum[128] = "http://tf2rj.com/forum/";
+static const char g_sJumpAssist[128] = "http://tf2rj.com/forum/index.php?topic=854.0";
+
+char g_sCurrentMap[64];
+char g_sClientSteamID[MAXPLAYERS + 1][32];
+
+int g_iLastTeleport[MAXPLAYERS + 1];
+int g_iClientTeam[MAXPLAYERS + 1];
+int g_iClientWeapons[MAXPLAYERS + 1][3];
+int g_iIntelCarrier;
+int g_iCPCount;
+int g_iForceTeam = 1;
+int g_iCPsTouched[MAXPLAYERS + 1];
+int g_iInitialGameType;
+
+float g_fOrigin[MAXPLAYERS + 1][3];
+float g_fAngles[MAXPLAYERS + 1][3];
+float g_fLastSavePos[MAXPLAYERS + 1][3];
+float g_fLastSaveAngles[MAXPLAYERS + 1][3];
+
+TFClassType g_TFClientClass[MAXPLAYERS + 1];
+
+ConVar g_cvarHostname;
+ConVar g_cvarWelcomeMsg;
+ConVar g_cvarWaitingForPlayers;
+
+Cookie g_hJAMessageCookie;
+Cookie g_hExplosionCookie;
+
+GlobalForward g_hForwardSKeys;
+
+ArrayList g_aNoFuncRegen;
+
+Database g_Database;
+
+StringMap g_smCapturePoint;
+StringMap g_smCapturePointName;
+StringMap g_smCaptureArea;
+StringMap g_smCaptureAreaName;
 
 #include "jumpassist/skeys.sp"
 #include "jumpassist/database.sp"
@@ -88,16 +85,12 @@ g_smCaptureAreaName;
 #include "jumpassist/sl.sp"
 
 public Plugin myinfo = {
-  name = PLUGIN_NAME, 
-  author = PLUGIN_AUTHOR, 
-  description = PLUGIN_DESCRIPTION, 
+  name = "[TF2] Jump Assist", 
+  author = "JoinedSenses (Original author: rush, with previous updates from nolem and happs)", 
+  description = "Tools to run a jump server with ease.", 
   version = PLUGIN_VERSION, 
   url = "https://github.com/JoinedSenses/TF2-ECJ-JumpAssist"
 }
-
-/* ======================================================================
-   ------------------------------- SM API
-*/
 
 public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max) {
   g_bLateLoad = late;
@@ -113,23 +106,19 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 }
 
 public void OnPluginStart() {
-  // CONVAR
-  CreateConVar(
-    "jumpassist_version", PLUGIN_VERSION, PLUGIN_DESCRIPTION, FCVAR_SPONLY | FCVAR_NOTIFY | FCVAR_DONTRECORD
-    ).SetString(PLUGIN_VERSION);
-  g_cvarHostname = FindConVar("hostname");
-  g_cvarWaitingForPlayers = FindConVar("mp_waitingforplayers_time");
+  // ConVars
+  CreateConVar("jumpassist_version", PLUGIN_VERSION, "JumpAssist version").SetString(PLUGIN_VERSION);
   g_cvarWelcomeMsg = CreateConVar("sm_jawelcomemsg", "1", "Show clients the welcome message when they join?");
   
   g_cvarWelcomeMsg.AddChangeHook(cvarWelcomeMsgChanged);
   
-  // HELP
+  // Help
   RegConsoleCmd("ja_help", cmdJAHelp, "Shows JA's commands.");
   RegConsoleCmd("sm_jumptf", cmdJumpTF, "Shows the jump.tf website.");
   RegConsoleCmd("sm_forums", cmdJumpForums, "Shows the jump.tf forums.");
   RegConsoleCmd("sm_jumpassist", cmdJumpAssist, "Shows the forum page for JumpAssist.");
   
-  // GENERAL
+  // General
   RegConsoleCmd("sm_s", cmdSave, "Saves your current position.");
   RegConsoleCmd("sm_save", cmdSave, "Saves your current position.");
   RegConsoleCmd("sm_t", cmdTele, "Teleports you to your current saved location.");
@@ -146,51 +135,45 @@ public void OnPluginStart() {
   RegConsoleCmd("sm_hidemessage", cmdHideMessage, "Toggles display of JA messages, such as save and teleport");
   RegConsoleCmd("sm_explosions", cmdExplosions, "Toggles displaying explosions");
   
-  // HIDE
+  // Hide
   RegConsoleCmd("sm_hide", cmdHide, "Show/Hide Other Players");
   
-  // PREVIEW
+  // Preview
   RegConsoleCmd("sm_preview", cmdPreview, "Enables noclip, allowing preview of a map");
   
-  // TELEPORT
+  // Teleport
   RegAdminCmd("sm_bring", cmdBring, ADMFLAG_ROOT, "Bring a client or group to your position.");
   RegAdminCmd("sm_goto", cmdGoTo, ADMFLAG_RESERVATION, "Go to a client's position.");
   RegAdminCmd("sm_send", cmdSendPlayer, ADMFLAG_GENERIC, "Send target to another target.");
   
-  // SKEYS
+  // skeys
   RegConsoleCmd("sm_skeys", cmdGetClientKeys, "Toggle showing a client's keys.");
   RegConsoleCmd("sm_skeyscolor", cmdChangeSkeysColor, "Changes the color of the text for skeys.");
   RegConsoleCmd("sm_skeyscolors", cmdChangeSkeysColor, "Changes the color of the text for skeys.");
   RegConsoleCmd("sm_skeyspos", cmdChangeSkeysLoc, "Changes the location of the text for skeys.");
   RegConsoleCmd("sm_skeysloc", cmdChangeSkeysLoc, "Changes the location of the text for skeys.");
   
-  // SPEC
-  RegConsoleCmd("sm_spec", cmdSpec, "sm_spec <target> - Spectate a player.");
-  RegConsoleCmd(
-    "sm_spec_ex", 
-    cmdSpecLock, 
-    "sm_spec_ex <target> - Consistently spectate a player, even through their death"
-    );
-  RegConsoleCmd(
-    "sm_speclock", 
-    cmdSpecLock, 
-    "sm_speclock <target> - Consistently spectate a player, even through their death"
-    );
-  RegAdminCmd("sm_fspec", cmdForceSpec, ADMFLAG_GENERIC, "sm_fspec <target> <targetToSpec>.");
+  // Spec
+  RegConsoleCmd("sm_spec", cmdSpec, "Spectate a player.");
+  RegConsoleCmd("sm_spec_ex", cmdSpecLock, "Spectate a player, even through their death");
+  RegConsoleCmd("sm_speclock", cmdSpecLock, "Spectate a player, even through their death");
+
+  RegAdminCmd("sm_fspec", cmdForceSpec, ADMFLAG_GENERIC, "Force a player to spectate another player.");
   
-  // RACE
+  // Race
   RegConsoleCmd("sm_race", cmdRace, "Initializes a new race.");
   RegConsoleCmd("sm_leaverace", cmdRaceLeave, "Leave the current race.");
   RegConsoleCmd("sm_r_leave", cmdRaceLeave, "Leave the current race.");
   RegConsoleCmd("sm_specrace", cmdRaceSpec, "Spectate a race.");
   RegConsoleCmd("sm_racelist", cmdRaceList, "Display race list");
   RegConsoleCmd("sm_raceinfo", cmdRaceInfo, "Display information about the race you are in.");
+
   RegAdminCmd("sm_serverrace", cmdRaceServer, ADMFLAG_GENERIC, "Invite everyone to a server wide race");
   
-  // ADMIN
+  // Admin
   RegAdminCmd("sm_mapset", cmdMapSet, ADMFLAG_GENERIC, "Change map settings");
   
-  // HOOKS
+  // Hooks
   HookEvent("player_team", eventPlayerChangeTeam);
   HookEvent("player_changeclass", eventPlayerChangeClass);
   HookEvent("player_spawn", eventPlayerSpawn, EventHookMode_Pre);
@@ -210,7 +193,7 @@ public void OnPluginStart() {
   AddCommandListener(listenerJoinClass, "join_class");
   AddCommandListener(listenerAutoTeam, "autoteam");
   
-  // HIDE
+  // Hide
   AddNormalSoundHook(hookSound);
   
   AddTempEntHook("TFExplosion", hookTempEnt);
@@ -240,10 +223,10 @@ public void OnPluginStart() {
   SetAllSkeysDefaults();
   ConnectToDatabase();
   
-  // GOTO
+  // Goto
   CreateGoToArrays();
   
-  // LATELOAD
+  // Late load
   if (g_bLateLoad) {
     PrintJAMessageAll(cTheme2..."JumpAssist\x01 has been"...cTheme2..." reloaded.");
     GetCurrentMap(g_sCurrentMap, sizeof(g_sCurrentMap));
@@ -258,12 +241,7 @@ public void OnPluginStart() {
       else {
         g_iClientTeam[i] = GetClientTeam(i);
         g_TFClientClass[i] = TF2_GetPlayerClass(i);
-        g_bFeaturesEnabled[i] = GetClientAuthId(
-          i, 
-          AuthId_Steam2, 
-          g_sClientSteamID[i], 
-          sizeof(g_sClientSteamID[])
-          );
+        g_bFeaturesEnabled[i] = GetClientAuthId(i, AuthId_Steam2, g_sClientSteamID[i], sizeof(g_sClientSteamID[]));
         
         SDKHook(i, SDKHook_WeaponEquipPost, hookOnWeaponEquipPost);
         SDKHook(i, SDKHook_SetTransmit, hookSetTransmitClient);
@@ -276,7 +254,7 @@ public void OnPluginStart() {
       }
     }
     
-    // HIDE
+    // Hide
     int ent = -1;
     while ((ent = FindEntityByClassname(ent, "item_teamflag")) != -1) {
       SDKHook(ent, SDKHook_SetTransmit, hookSetTransmitIntel);
@@ -374,6 +352,9 @@ public void OnConfigsExecuted() {
   FindConVar("sv_noclipspeed").SetFloat(4.0);
   FindConVar("tf_weapon_criticals").SetInt(0, true);
   FindConVar("tf_sentrygun_ammocheat").SetInt(1);
+
+	g_cvarHostname = FindConVar("hostname");
+  g_cvarWaitingForPlayers = FindConVar("mp_waitingforplayers_time");
 }
 
 public void OnClientCookiesCached(int client) {
@@ -1786,7 +1767,7 @@ public int menuHandlerJAHelp(Menu menu, MenuAction action, int client, int choic
       }
       default: {
         delete panel;
-        return;
+        return 0;
       }
     }
     
@@ -1797,6 +1778,7 @@ public int menuHandlerJAHelp(Menu menu, MenuAction action, int client, int choic
     panel.Send(client, menuHandlerJAHelpSubMenu, 15);
     delete panel;
   }
+	return 0;
 }
 
 public int menuHandlerJAHelpSubMenu(Menu menu, MenuAction action, int param1, int param2) {
@@ -1807,6 +1789,7 @@ public int menuHandlerJAHelpSubMenu(Menu menu, MenuAction action, int param1, in
       }
     }
   }
+	return 0;
 }
 
 /**
@@ -1927,22 +1910,25 @@ public Action timerWelcomePlayer(Handle timer, int userid) {
 void PrintWelcomeMessage(int client, const char[] format, any...) {
   char buffer[256];
   VFormat(buffer, sizeof(buffer), format, 3);
-  // PrintColoredChat(client, WELCOMEPREFIX ... buffer);
   PrintColoredChat(client, "%s %s", WELCOMEPREFIX, buffer);
 }
 
 public Action timerSpawnedBool(Handle timer, int client) {
   g_bJustSpawned[client] = false;
+	return Plugin_Continue;
 }
 
 public Action timerMapSetUsed(Handle timer) {
   g_bMapSetUsed = false;
+	return Plugin_Continue;
 }
 
 public Action timerUnfreeze(Handle timer, int client) {
   SetEntityFlags(client, GetEntityFlags(client) & ~(FL_ATCONTROLS | FL_FROZEN));
+	return Plugin_Continue;
 }
 
 public Action timerUnpauseTeleport(Handle timer, int client) {
   g_bTelePaused[client] = true;
+	return Plugin_Continue;
 } 

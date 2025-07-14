@@ -487,4 +487,5 @@ void frameRequestFSpecRestore(int client) {
 
 public Action timerDisableFSpec(Handle timer, int client) {
   DisableForceSpec(client);
+  return Plugin_Continue;
 } 
