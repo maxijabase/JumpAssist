@@ -1,75 +1,72 @@
-# TF2-ECJ-JumpAssist
+# JumpAssist
+JumpAssist is a plugin designed to provide various utilities for Team Fortress 2 Jump servers.
+This is a fork of JoinedSenses' TF2-ECJ-JumpAssist, which itself is a fork of arispoloway's JumpAssist.
+In this version, I restored speedrunning functionalities, fixed some bugs and streamlined syntax and code style. The idea is to keep updating this version and updating functionality to meet today's requirements.
 
 ## Build Requirements:
 https://github.com/JoinedSenses/SM-JSLib  
 https://github.com/JoinedSenses/SM-SaveLoc  
-https://github.com/JoinedSenses/SourceMod-IncludeLibrary/blob/master/include/color_literals.inc  
+https://github.com/JoinedSenses/SourceMod-IncludeLibrary/blob/master/include/color_literals.inc
 
-## Various differences compared to nolem's (arispoloway) version:
-#### If switching from nolem's version to this one, a new database will need to be created due to changes in the database structure.  
-#### Too many differences to really list. TL;DR this version is more efficient
-  
-Syntax updates  
-Database structure  
-Improved race functionality  
-Integrated hide plugin  
-Changed chat messages/colors (Change theme colors by editing cTheme1/2 and recompiling)  
-Removed updater.  
-Removed speedrun functionality (Available in self-race)  
-Showkeys improvements (Efficiency/responsiveness. Also improved /skeyspos)  
-Tons of other undocumented misc changes.  
+## Commands
 
-This plugin supports SaveLoc functionality found here:  
-https://github.com/JoinedSenses/SM-SaveLoc  
-  
-## Public Commands
-Command | Description
---------| -----------
-======== Help ======== |  
-**ja_help** | Shows JA's commands.  
-**sm_jumptf** | Shows the jump.tf website.  
-**sm_forums** | Shows the jump.tf forums.  
-**sm_jumpassist** | Shows the forum page for JumpAssist. 
-======== General ======== |  
-**sm_save, sm_s** | Saves your current position.   
-**sm_tele, sm_t** | Teleports you to your current saved location.   
-**sm_reset, sm_r** | Sends you back to the beginning without deleting your save.  
-**sm_restart** | Deletes your save, and sends you back to the beginning.  
-**sm_undo** | Restores your last saved position.  
-**sm_ammo, sm_regen** | Regenerates weapon ammunition  
-**sm_superman** | Makes you strong like superman. (Reduces damage taken)  
-**sm_hardcore** | Enables hardcore mode (No regen, no saves)  
-**sm_hide** | Hide other players.  
-**sm_hidemessage** | Toggles display of JA messages, such as save and teleport  
-**sm_preview** | Toggle noclip to preview map/stage. Location is restored after use.  
-======== Spec ======== |  
-**sm_spec \<optional:targetname>** | Open spectate menu or type a players name to spectate  
-**sm_speclock** | Spec lock another player (Retarget player if they die, change teams/class)  
-======== ShowKeys ======== |  
-**sm_skeys** | Toggle showing a client's keys  
-**sm_skeyscolor, sm_skeyscolors** | Changes the color of the text for skeys.  
-**sm_skeyspos, sm_skeysloc** | Changes the location of the text for skeys.  
-======== Race ======== |  
-**sm_race** | Initializes a new race.  
-**sm_leaverace** | Leave the current race.  
-**sm_specrace** | Spectate a race.  
-**sm_racelist** | Display race list   
-**sm_raceinfo** | Display information about the race you are in.  
-  
-## Admin Commands  
-Command | Description
---------|------------
-**sm_server_race, sm_s_race** | Invite everyone to a server wide race  
-**sm_mapset** | Change map settings  
-**sm_send** | Send target to another target.  
-**sm_fspec \<targetname> \<optional:targettospec>** | Force target to spectate
+### Public (User) Commands
 
-## CVars
-CVar | Def | Description  
------|---------|--------  
-**ja_enable** | 1 | Turns JumpAssist on/off.  
-**ja_welcomemsg** | 1 | Show clients the welcome message when they join?  
-**ja_ammocheat** | 1 | Allows engineers infinite sentrygun ammo?  
-**ja_crits** | 0 | Allow critical hits?  
-**ja_superman** | 1 | Allows everyone to be invincible?  
-**sm_hide_explosions** | 1 | Enable/Disable hiding explosions
+| Command(s)                | Functionality                                                                                  | Category         |
+|---------------------------|-----------------------------------------------------------------------------------------------|------------------|
+| `ja_help`                 | Shows JumpAssist's commands/help menu.                                                        | General/Help     |
+| `sm_jumptf`               | Shows the jump.tf website.                                                                    | General/Help     |
+| `sm_forums`               | Shows the jump.tf forums.                                                                     | General/Help     |
+| `sm_jumpassist`           | Shows the forum page for JumpAssist.                                                          | General/Help     |
+| `sm_s`, `sm_save`         | Saves your current position.                                                                  | Save/Teleport    |
+| `sm_t`, `sm_tele`         | Teleports you to your current saved location.                                                 | Save/Teleport    |
+| `sm_r`, `sm_reset`        | Sends you back to the beginning without deleting your save.                                   | Save/Teleport    |
+| `sm_restart`              | Deletes your save and sends you back to the beginning.                                        | Save/Teleport    |
+| `sm_undo`                 | Restores your last saved position.                                                            | Save/Teleport    |
+| `sm_regen`, `sm_ammo`     | Regenerates weapon ammunition.                                                                | Misc             |
+| `sm_superman`             | Makes you strong like superman.                                                               | Misc             |
+| `sm_hardcore`             | Enables hardcore mode (No regen, no saves).                                                   | Misc             |
+| `sm_hidemessage`          | Toggles display of JumpAssist messages (e.g., save/teleport notifications).                   | Misc             |
+| `sm_explosions`           | Toggles displaying explosions.                                                                | Misc             |
+| `sm_hide`                 | Show/Hide other players.                                                                      | Visual           |
+| `sm_preview`              | Enables noclip, allowing preview of a map.                                                    | Visual           |
+| `sm_skeys`                | Toggle showing a client's keys (HUD).                                                         | SKeys HUD        |
+| `sm_skeyscolor`, `sm_skeyscolors` | Changes the color of the text for SKeys.                                             | SKeys HUD        |
+| `sm_skeyspos`, `sm_skeysloc`     | Changes the location of the text for SKeys.                                           | SKeys HUD        |
+| `sm_spec`                 | Spectate a player.                                                                            | Spectator        |
+| `sm_spec_ex`, `sm_speclock` | Spectate a player, even through their death.                                               | Spectator        |
+| `sm_race`                 | Initializes a new race.                                                                       | Race             |
+| `sm_leaverace`, `sm_r_leave` | Leave the current race.                                                                   | Race             |
+| `sm_specrace`             | Spectate a race.                                                                              | Race             |
+| `sm_racelist`             | Display race list.                                                                            | Race             |
+| `sm_raceinfo`             | Display information about the race you are in.                                                | Race             |
+| `sm_showzones`            | Shows all zones of the map.                                                                   | Speedrun         |
+| `sm_rmtime`               | Removes your time on the map.                                                                 | Speedrun         |
+| `sm_showzone`, `sm_sz`    | Shows the current zone and says what zone it is.                                              | Speedrun         |
+| `sm_speedrun`, `sm_sr`    | Enables/disables speedrunning.                                                                | Speedrun         |
+| `sm_stopspeedrun`         | Disables speedrunning.                                                                        | Speedrun         |
+| `sm_pr`                   | Shows your personal record.                                                                   | Speedrun         |
+| `sm_wr`, `sm_top`         | Shows the map record.                                                                         | Speedrun         |
+| `sm_pi`                   | Shows the player's runs.                                                                      | Speedrun         |
+
+### Admin Commands
+
+| Command(s)                | Functionality                                                                                  | Category         |
+|---------------------------|-----------------------------------------------------------------------------------------------|------------------|
+| `sm_bring`                | Bring a client or group to your position.                                                     | Teleport/Admin   |
+| `sm_goto`                 | Go to a client's position.                                                                    | Teleport/Admin   |
+| `sm_send`                 | Send target to another target.                                                                | Teleport/Admin   |
+| `sm_fspec`                | Force a player to spectate another player.                                                    | Spectator/Admin  |
+| `sm_serverrace`           | Invite everyone to a server-wide race.                                                        | Race/Admin       |
+| `sm_setstart`             | Sets the map start location for speedrunning.                                                 | Speedrun/Admin   |
+| `sm_addzone`              | Adds a checkpoint or end zone for speedrunning.                                               | Speedrun/Admin   |
+| `sm_clearzones`           | Deletes all zones on the current map.                                                         | Speedrun/Admin   |
+| `sm_cleartimes`           | Deletes all times on the current map.                                                         | Speedrun/Admin   |
+| `sm_sr_force_reload`      | Forces reload of speedrun data/times.                                                         | Speedrun/Admin   |
+| `sm_mapset`               | Change map settings (team/class/lockcps).                                                     | Admin            |
+
+**Notes:**
+- All commands prefixed with `sm_` can typically be used with or without the `!` (ex: `!save` or `/save`).
+- Admin commands require appropriate SourceMod admin flags (e.g., `ADMFLAG_GENERIC`, `ADMFLAG_ROOT`, etc.).
+- Some commands have aliases (e.g., `sm_save`/`sm_s`, `sm_tele`/`sm_t`, etc.).
+- Some commands are only available if the relevant features (like speedrun or database) are enabled.
