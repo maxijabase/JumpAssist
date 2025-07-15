@@ -1,7 +1,7 @@
 #pragma newdecls required
 #pragma semicolon 1
 
-#define PLUGIN_VERSION "2.4.8"
+#define PLUGIN_VERSION "2.5.0"
 
 #define MAX_CAP_POINTS 32
 #define WELCOMEPREFIX "\x07FFA500[\x03+\x07FFA500] "
