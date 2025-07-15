@@ -19,8 +19,6 @@ int g_iNumZones = 0;
 
 bool g_bSkippedCheckPointMessage[32];
 
-ConVar cvarSpeedrunEnabled;
-
 enum {
   LISTING_RANKED, 
   LISTING_GENERAL, 
@@ -141,7 +139,7 @@ public void SQL_OnSpeedrunSubmit(Handle owner, Handle hndl, const char[] error, 
 }
 
 public Action cmdShowPR(int client, int args) {
-  if (!cvarSpeedrunEnabled.BoolValue) {
+  if (!g_cvarSpeedrunEnabled.BoolValue) {
     return Plugin_Continue;
   }
   if (g_Database == null) {
@@ -215,7 +213,7 @@ public void SQL_OnSpeedrunListingSubmit(Database db, DBResultSet results, const 
 }
 
 public Action cmdShowPlayerInfo(int client, int args) {
-  if (!cvarSpeedrunEnabled.BoolValue) {
+  if (!g_cvarSpeedrunEnabled.BoolValue) {
     return Plugin_Continue;
   }
   if (g_Database == null) {
@@ -251,7 +249,7 @@ public Action cmdShowPlayerInfo(int client, int args) {
 }
 
 public Action cmdShowTop(int client, int args) {
-  if (!cvarSpeedrunEnabled.BoolValue) {
+  if (!g_cvarSpeedrunEnabled.BoolValue) {
     return Plugin_Continue;
   }
   if (g_Database == null) {
@@ -442,7 +440,7 @@ int Menu_MultiListing(Menu menu, MenuAction action, int param1, int param2) {
 }
 
 public Action cmdShowWR(int client, int args) {
-  if (!cvarSpeedrunEnabled.BoolValue) {
+  if (!g_cvarSpeedrunEnabled.BoolValue) {
     return Plugin_Continue;
   }
   if (g_Database == null) {
@@ -473,7 +471,7 @@ public Action cmdShowWR(int client, int args) {
 }
 
 public Action cmdSpeedrunRestart(int client, int args) {
-  if (!cvarSpeedrunEnabled.BoolValue) {
+  if (!g_cvarSpeedrunEnabled.BoolValue) {
     return Plugin_Continue;
   }
   if (g_Database == null) {
@@ -498,7 +496,7 @@ public Action cmdSpeedrunRestart(int client, int args) {
 }
 
 public Action cmdDisableSpeedrun(int client, int args) {
-  if (!cvarSpeedrunEnabled.BoolValue) {
+  if (!g_cvarSpeedrunEnabled.BoolValue) {
     return Plugin_Continue;
   }
   if (g_Database == null) {
@@ -521,7 +519,7 @@ public Action cmdDisableSpeedrun(int client, int args) {
 }
 
 public Action cmdToggleSpeedrun(int client, int args) {
-  if (!cvarSpeedrunEnabled.BoolValue) {
+  if (!g_cvarSpeedrunEnabled.BoolValue) {
     return Plugin_Continue;
   }
   if (g_Database == null) {
@@ -575,7 +573,7 @@ public void RestartSpeedrun(int client) {
 }
 
 public Action cmdSpeedrunForceReload(int client, int args) {
-  if (!cvarSpeedrunEnabled.BoolValue) {
+  if (!g_cvarSpeedrunEnabled.BoolValue) {
     return Plugin_Continue;
   }
   if (g_Database == null) {
@@ -589,7 +587,7 @@ public Action cmdSpeedrunForceReload(int client, int args) {
 }
 
 public Action cmdRemoveTime(int client, int args) {
-  if (!cvarSpeedrunEnabled.BoolValue) {
+  if (!g_cvarSpeedrunEnabled.BoolValue) {
     return Plugin_Continue;
   }
   if (g_Database == null) {
@@ -626,7 +624,7 @@ public Action cmdRemoveTime(int client, int args) {
 }
 
 public Action cmdClearTimes(int client, int args) {
-  if (!cvarSpeedrunEnabled.BoolValue) {
+  if (!g_cvarSpeedrunEnabled.BoolValue) {
     return Plugin_Continue;
   }
   if (g_Database == null) {
@@ -664,7 +662,7 @@ public Action cmdClearTimes(int client, int args) {
 }
 
 public Action cmdClearZones(int client, int args) {
-  if (!cvarSpeedrunEnabled.BoolValue) {
+  if (!g_cvarSpeedrunEnabled.BoolValue) {
     return Plugin_Continue;
   }
   if (g_Database == null) {
@@ -717,7 +715,7 @@ public Action cmdClearZones(int client, int args) {
 }
 
 public Action cmdShowZones(int client, int args) {
-  if (!cvarSpeedrunEnabled.BoolValue) {
+  if (!g_cvarSpeedrunEnabled.BoolValue) {
     return Plugin_Continue;
   }
   if (g_Database == null) {
@@ -741,7 +739,7 @@ public Action cmdShowZones(int client, int args) {
 }
 
 public Action cmdShowZone(int client, int args) {
-  if (!cvarSpeedrunEnabled.BoolValue) {
+  if (!g_cvarSpeedrunEnabled.BoolValue) {
     return Plugin_Continue;
   }
   if (g_Database == null) {
@@ -917,7 +915,7 @@ public void SQL_OnMapStartLocationLoad(Database db, DBResultSet results, const c
 }
 
 public Action cmdAddZone(int client, int args) {
-  if (!cvarSpeedrunEnabled.BoolValue) {
+  if (!g_cvarSpeedrunEnabled.BoolValue) {
     return Plugin_Continue;
   }
   if (g_Database == null) {
@@ -993,7 +991,7 @@ public void SQL_OnZoneAdded(Handle owner, Handle hndl, const char[] error, any d
 }
 
 public Action cmdSetStart(int client, int args) {
-  if (!cvarSpeedrunEnabled.BoolValue) {
+  if (!g_cvarSpeedrunEnabled.BoolValue) {
     return Plugin_Continue;
   }
   if (g_Database == null) {

@@ -21,6 +21,10 @@ public void SQL_OnConnect(Database db, const char[] error, any data) {
         LoadPlayerProfile(i);
       }
     }
+
+    if (g_cvarSpeedrunEnabled.BoolValue) {
+      LoadMapSpeedrunInfo();
+    }
   }
 }
 

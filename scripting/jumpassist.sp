@@ -60,9 +60,8 @@ float g_fLastSaveAngles[MAXPLAYERS + 1][3];
 
 TFClassType g_TFClientClass[MAXPLAYERS + 1];
 
-ConVar g_cvarHostname;
 ConVar g_cvarWelcomeMsg;
-ConVar g_cvarWaitingForPlayers;
+ConVar g_cvarSpeedrunEnabled;
 
 Cookie g_hJAMessageCookie;
 Cookie g_hExplosionCookie;
@@ -90,10 +89,10 @@ StringMap g_smCaptureAreaName;
 
 public Plugin myinfo = {
   name = "[TF2] Jump Assist", 
-  author = "JoinedSenses (Original author: rush, with previous updates from nolem and happs)", 
+  author = "ampere, forked from JoinedSenses, nolem, happs", 
   description = "Tools to run a jump server with ease.", 
   version = PLUGIN_VERSION, 
-  url = "https://github.com/JoinedSenses/TF2-ECJ-JumpAssist"
+  url = "https://github.com/maxijabase/JumpAssist"
 }
 
 public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max) {
@@ -110,10 +109,13 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 }
 
 public void OnPluginStart() {
+  // Database
+  ConnectToDatabase();
+
   // ConVars
   CreateConVar("jumpassist_version", PLUGIN_VERSION, "JumpAssist version").SetString(PLUGIN_VERSION);
   g_cvarWelcomeMsg = CreateConVar("sm_jawelcomemsg", "1", "Show clients the welcome message when they join?");
-  cvarSpeedrunEnabled = CreateConVar("sm_speedrun_enabled", "1", "Enable/disable speedrun functionality");
+  g_cvarSpeedrunEnabled = CreateConVar("sm_speedrun_enabled", "1", "Enable/disable speedrun functionality");
   
   g_cvarWelcomeMsg.AddChangeHook(cvarWelcomeMsgChanged);
   
@@ -244,7 +246,6 @@ public void OnPluginStart() {
   g_hExplosionCookie = new Cookie("JAExplosion_cookie", "Jump Assist Explosion Cookie", CookieAccess_Protected);
   
   SetAllSkeysDefaults();
-  ConnectToDatabase();
   
   // Goto
   CreateGoToArrays();
@@ -311,9 +312,12 @@ public void OnMapStart() {
   
   if (g_Database != null) {
     LoadMapCFG();
+    if (g_cvarSpeedrunEnabled.BoolValue) {
+      LoadMapSpeedrunInfo();
+    }
   }
   
-  g_cvarWaitingForPlayers.SetInt(0);
+  FindConVar("mp_waitingforplayers_cancel").SetInt(1);
   PrecacheSound("misc/freeze_cam.wav");
   PrecacheSound("misc/killstreak.wav");
   
@@ -322,11 +326,6 @@ public void OnMapStart() {
   
   HookFuncRegenerate();
   SetUpCapturePoints();
-  
-  // Speedrun: Load map speedrun data
-  if (cvarSpeedrunEnabled.BoolValue) {
-    LoadMapSpeedrunInfo();
-  }
 }
 
 void SetUpCapturePoints() {
@@ -380,9 +379,6 @@ public void OnConfigsExecuted() {
   FindConVar("sv_noclipspeed").SetFloat(4.0);
   FindConVar("tf_weapon_criticals").SetInt(0, true);
   FindConVar("tf_sentrygun_ammocheat").SetInt(1);
-  
-  g_cvarHostname = FindConVar("hostname");
-  g_cvarWaitingForPlayers = FindConVar("mp_waitingforplayers_time");
 }
 
 public void OnClientCookiesCached(int client) {
@@ -419,7 +415,7 @@ public void OnClientPostAdminCheck(int client) {
   LoadPlayerProfile(client);
   
   // Speedrun: Update player name in steamids table
-  if (cvarSpeedrunEnabled.BoolValue) {
+  if (g_cvarSpeedrunEnabled.BoolValue) {
     UpdateSteamID(client);
   }
 }
@@ -438,7 +434,7 @@ public void OnGameFrame() {
       g_iButtons[i] = GetClientButtons(i);
     }
   }
-	if (cvarSpeedrunEnabled.BoolValue) {
+	if (g_cvarSpeedrunEnabled.BoolValue) {
 		SpeedrunOnGameFrame();
 	}
 }
@@ -1926,7 +1922,7 @@ public Action timerWelcomePlayer(Handle timer, int userid) {
   }
   
   char hostname[64];
-  g_cvarHostname.GetString(hostname, sizeof(hostname));
+  FindConVar("hostname").GetString(hostname, sizeof(hostname));
   
   // HACK: Check if ECJ Server and strip time left from host name
   if (strncmp(hostname, "++", 2) == 0) {
