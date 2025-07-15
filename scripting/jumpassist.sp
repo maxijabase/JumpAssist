@@ -113,6 +113,7 @@ public void OnPluginStart() {
   // ConVars
   CreateConVar("jumpassist_version", PLUGIN_VERSION, "JumpAssist version").SetString(PLUGIN_VERSION);
   g_cvarWelcomeMsg = CreateConVar("sm_jawelcomemsg", "1", "Show clients the welcome message when they join?");
+  cvarSpeedrunEnabled = CreateConVar("sm_speedrun_enabled", "1", "Enable/disable speedrun functionality");
   
   g_cvarWelcomeMsg.AddChangeHook(cvarWelcomeMsgChanged);
   
@@ -321,6 +322,11 @@ public void OnMapStart() {
   
   HookFuncRegenerate();
   SetUpCapturePoints();
+  
+  // Speedrun: Load map speedrun data
+  if (cvarSpeedrunEnabled.BoolValue) {
+    LoadMapSpeedrunInfo();
+  }
 }
 
 void SetUpCapturePoints() {
@@ -411,6 +417,11 @@ public void OnClientPostAdminCheck(int client) {
   
   g_bFeaturesEnabled[client] = true;
   LoadPlayerProfile(client);
+  
+  // Speedrun: Update player name in steamids table
+  if (cvarSpeedrunEnabled.BoolValue) {
+    UpdateSteamID(client);
+  }
 }
 
 public void SDKHook_OnWeaponEquipPost(int client, int weapon) {

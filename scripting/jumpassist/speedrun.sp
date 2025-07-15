@@ -19,8 +19,6 @@ int g_iNumZones = 0;
 
 bool g_bSkippedCheckPointMessage[32];
 
-char g_sMap[64];
-
 ConVar cvarSpeedrunEnabled;
 
 enum {
@@ -36,7 +34,7 @@ void processSpeedrun(int client) {
   
   GetClientAuthId(client, AuthId_Steam2, steamid, sizeof(steamid));
   Format(endtime, sizeof(endtime), "c%d", g_iNumZones - 1);
-  Format(query, sizeof(query), "SELECT %s FROM times WHERE SteamID='%s' AND class='%d' AND MapName='%s'", endtime, steamid, g_iProcessingClass[client], g_sMap);
+  Format(query, sizeof(query), "SELECT %s FROM times WHERE SteamID='%s' AND class='%d' AND MapName='%s'", endtime, steamid, g_iProcessingClass[client], g_sCurrentMap);
   g_Database.Query(SQL_OnSpeedrunCheckLoad, query, client);
 }
 
@@ -73,7 +71,7 @@ public void SQL_OnSpeedrunCheckLoad(Database db, DBResultSet results, const char
           }
         }
       }
-      Format(query, sizeof(query), "%s WHERE SteamID='%s' AND MapName='%s' AND class='%d';", query, steamid, g_sMap, g_iProcessingClass[client]);
+      Format(query, sizeof(query), "%s WHERE SteamID='%s' AND MapName='%s' AND class='%d';", query, steamid, g_sCurrentMap, g_iProcessingClass[client]);
       g_Database.Query(SQL_OnSpeedrunSubmit, query, client);
     }
     else {
@@ -89,7 +87,7 @@ public void SQL_OnSpeedrunCheckLoad(Database db, DBResultSet results, const char
     }
   }
   else {
-    Format(query, sizeof(query), "INSERT INTO times VALUES(null, '%s', '%d', '%s', '%d',", steamid, g_iProcessingClass[client], g_sMap, datetime);
+    Format(query, sizeof(query), "INSERT INTO times VALUES(null, '%s', '%d', '%s', '%d',", steamid, g_iProcessingClass[client], g_sCurrentMap, datetime);
     for (int i = 0; i < 32; i++) {
       if (i == 0) {
         Format(query, sizeof(query), "%s '%f',", query, 0.0);
@@ -167,7 +165,7 @@ public Action cmdShowPR(int client, int args) {
   class = (IsClientObserver(client)) ? 3 : view_as<int>(TF2_GetPlayerClass(client));
   
   Format(endtime, sizeof(endtime), "c%d", g_iNumZones - 1);
-  Format(query, sizeof(query), "SELECT MapName, SteamID, %s, class FROM times WHERE SteamID='%s' AND class='%d' AND MapName='%s'", endtime, steamid, class, g_sMap);
+  Format(query, sizeof(query), "SELECT MapName, SteamID, %s, class FROM times WHERE SteamID='%s' AND class='%d' AND MapName='%s'", endtime, steamid, class, g_sCurrentMap);
   g_Database.Query(SQL_OnSpeedrunListingSubmit, query, client);
   
   return Plugin_Continue;
@@ -241,7 +239,7 @@ public Action cmdShowPlayerInfo(int client, int args) {
     Format(query, sizeof(query), "SELECT * FROM times WHERE SteamID='%s' LIMIT 50", steamid);
     data.Push(client);
     data.Push(LISTING_PLAYER);
-    data.PushString(g_sMap);
+    data.PushString(g_sCurrentMap);
     data.Push(0);
   }
   // else {
@@ -276,10 +274,10 @@ public Action cmdShowTop(int client, int args) {
   
   if (args == 0) {
     Format(endtime, sizeof(endtime), "c%d", g_iNumZones - 1);
-    Format(query, sizeof(query), "SELECT * FROM times WHERE class='%d' AND MapName='%s' ORDER BY %s ASC LIMIT 50", class, g_sMap, endtime);
+    Format(query, sizeof(query), "SELECT * FROM times WHERE class='%d' AND MapName='%s' ORDER BY %s ASC LIMIT 50", class, g_sCurrentMap, endtime);
     data.Push(client);
     data.Push(LISTING_RANKED);
-    data.PushString(g_sMap);
+    data.PushString(g_sCurrentMap);
     data.Push(class);
   }
   else {
@@ -468,7 +466,7 @@ public Action cmdShowWR(int client, int args) {
   class = (IsClientObserver(client)) ? 3 : view_as<int>(TF2_GetPlayerClass(client));
   
   Format(endtime, sizeof(endtime), "c%d", g_iNumZones - 1);
-  Format(query, sizeof(query), "SELECT MapName, SteamID, %s, class FROM times WHERE class='%d' AND MapName='%s' ORDER BY %s ASC LIMIT 1", endtime, class, g_sMap, endtime);
+  Format(query, sizeof(query), "SELECT MapName, SteamID, %s, class FROM times WHERE class='%d' AND MapName='%s' ORDER BY %s ASC LIMIT 1", endtime, class, g_sCurrentMap, endtime);
   g_Database.Query(SQL_OnSpeedrunListingSubmit, query, client);
   
   return Plugin_Continue;
@@ -612,7 +610,7 @@ public Action cmdRemoveTime(int client, int args) {
   
   GetClientAuthId(client, AuthId_Steam2, steamid, sizeof(steamid));
   int class = view_as<int>(TF2_GetPlayerClass(client));
-  Format(query, sizeof(query), "DELETE FROM times WHERE MapName='%s' AND SteamID='%s' AND class='%d'", g_sMap, steamid, class);
+  Format(query, sizeof(query), "DELETE FROM times WHERE MapName='%s' AND SteamID='%s' AND class='%d'", g_sCurrentMap, steamid, class);
   SQL_LockDatabase(g_Database);
   if ((results = SQL_Query(g_Database, query)) == null) {
     char err[256];
@@ -642,7 +640,7 @@ public Action cmdClearTimes(int client, int args) {
   char query[1024];
   DBResultSet results;
   
-  Format(query, sizeof(query), "DELETE FROM times WHERE MapName='%s'", g_sMap);
+  Format(query, sizeof(query), "DELETE FROM times WHERE MapName='%s'", g_sCurrentMap);
   SQL_LockDatabase(g_Database);
   if ((results = SQL_Query(g_Database, query)) == null) {
     char err[256];
@@ -680,7 +678,7 @@ public Action cmdClearZones(int client, int args) {
   char query[1024];
   DBResultSet results;
   
-  Format(query, sizeof(query), "DELETE FROM times WHERE MapName='%s'", g_sMap);
+  Format(query, sizeof(query), "DELETE FROM times WHERE MapName='%s'", g_sCurrentMap);
   SQL_LockDatabase(g_Database);
   if ((results = SQL_Query(g_Database, query)) == null) {
     char err[256];
@@ -700,7 +698,7 @@ public Action cmdClearZones(int client, int args) {
       }
     }
   }
-  Format(query, sizeof(query), "DELETE FROM zones WHERE MapName='%s'", g_sMap);
+  Format(query, sizeof(query), "DELETE FROM zones WHERE MapName='%s'", g_sCurrentMap);
   SQL_LockDatabase(g_Database);
   if ((results = SQL_Query(g_Database, query)) == null) {
     char err[256];
@@ -859,10 +857,9 @@ void LoadMapSpeedrunInfo() {
   char query[1024] = "";
   
   ClearMapSpeedrunInfo();
-  GetCurrentMap(g_sMap, sizeof(g_sMap));
-  Format(query, sizeof(query), "SELECT x, y, z, xang, yang, zang FROM startlocs WHERE MapName='%s'", g_sMap);
+  Format(query, sizeof(query), "SELECT x, y, z, xang, yang, zang FROM startlocs WHERE MapName='%s'", g_sCurrentMap);
   g_Database.Query(SQL_OnMapStartLocationLoad, query, 0);
-  Format(query, sizeof(query), "SELECT x1, y1, z1, x2, y2, z2 FROM zones WHERE MapName='%s' ORDER BY 'number' ASC", g_sMap);
+  Format(query, sizeof(query), "SELECT x1, y1, z1, x2, y2, z2 FROM zones WHERE MapName='%s' ORDER BY 'number' ASC", g_sCurrentMap);
   g_Database.Query(SQL_OnMapZonesLoad, query, 0);
 }
 
@@ -882,7 +879,7 @@ public void SQL_OnMapZonesLoad(Database db, DBResultSet results, const char[] er
     }
     char query[1024] = "";
     for (int i = 0; i < 9; i++) {
-      Format(query, sizeof(query), "SELECT c%d FROM times WHERE MapName='%s' AND class='%d' ORDER BY c%d ASC LIMIT 1", g_iNumZones - 1, g_sMap, i, g_iNumZones - 1);
+      Format(query, sizeof(query), "SELECT c%d FROM times WHERE MapName='%s' AND class='%d' ORDER BY c%d ASC LIMIT 1", g_iNumZones - 1, g_sCurrentMap, i, g_iNumZones - 1);
       g_Database.Query(SQL_OnRecordLoad, query, i);
     }
   }
@@ -966,7 +963,7 @@ public Action cmdAddZone(int client, int args) {
     }
     char query[1024];
     
-    Format(query, sizeof(query), "INSERT INTO zones VALUES (null, '%d', '%s', '%f', '%f', '%f', '%f', '%f', '%f')", g_iNumZones, g_sMap, g_fBottomLoc[0], g_fBottomLoc[1], g_fBottomLoc[2], g_fTopLoc[0], g_fTopLoc[1], g_fTopLoc[2]);
+    Format(query, sizeof(query), "INSERT INTO zones VALUES (null, '%d', '%s', '%f', '%f', '%f', '%f', '%f', '%f')", g_iNumZones, g_sCurrentMap, g_fBottomLoc[0], g_fBottomLoc[1], g_fBottomLoc[2], g_fTopLoc[0], g_fTopLoc[1], g_fTopLoc[2]);
     g_fZoneBottom[g_iNumZones] = g_fBottomLoc;
     g_fZoneTop[g_iNumZones] = g_fTopLoc;
     g_fBottomLoc = NULL_VECTOR;
@@ -1021,7 +1018,7 @@ public Action cmdSetStart(int client, int args) {
   g_fStartAng = a;
   g_fLoc = l;
   g_fAng = a;
-  Format(query, sizeof(query), "SELECT * FROM startlocs WHERE MapName='%s'", g_sMap);
+  Format(query, sizeof(query), "SELECT * FROM startlocs WHERE MapName='%s'", g_sCurrentMap);
   g_Database.Query(SQL_OnStartLocationCheck, query, client);
   
   return Plugin_Continue;
@@ -1035,11 +1032,11 @@ public void SQL_OnStartLocationCheck(Database db, DBResultSet results, const cha
     LogError("OnStartLocationCheck() - Query failed! %s", error);
   }
   else if (results.RowCount) {
-    Format(query, sizeof(query), "UPDATE startlocs SET x='%f', ='%f', ='%f', ang='%f', ang='%f', ang='%f' WHERE MapName='%s'", g_fLoc[0], g_fLoc[1], g_fLoc[2], g_fAng[0], g_fAng[1], g_fAng[2], g_sMap);
+    Format(query, sizeof(query), "UPDATE startlocs SET x='%f', y='%f', z='%f', xang='%f', yang='%f', zang='%f' WHERE MapName='%s'", g_fLoc[0], g_fLoc[1], g_fLoc[2], g_fAng[0], g_fAng[1], g_fAng[2], g_sCurrentMap);
     g_Database.Query(SQL_OnStartLocationSet, query, client);
   }
   else {
-    Format(query, sizeof(query), "INSERT INTO startlocs VALUES(null,'%s', '%f','%f','%f','%f','%f','%f');", g_sMap, g_fLoc[0], g_fLoc[1], g_fLoc[2], g_fAng[0], g_fAng[1], g_fAng[2]);
+    Format(query, sizeof(query), "INSERT INTO startlocs VALUES(null,'%s', '%f','%f','%f','%f','%f','%f');", g_sCurrentMap, g_fLoc[0], g_fLoc[1], g_fLoc[2], g_fAng[0], g_fAng[1], g_fAng[2]);
     g_Database.Query(SQL_OnStartLocationSet, query, client);
   }
 }
