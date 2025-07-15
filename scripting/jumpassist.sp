@@ -13,7 +13,7 @@
 #include <color_literals>
 #include <clientprefs>
 #undef REQUIRE_PLUGIN
-#include "saveloc.inc"
+#include <saveloc>
 #define REQUIRE_PLUGIN
 #include <jslib>
 
