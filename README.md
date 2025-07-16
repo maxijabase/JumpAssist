@@ -3,6 +3,11 @@ JumpAssist is a plugin designed to provide various utilities for Team Fortress 2
 This is a fork of JoinedSenses' TF2-ECJ-JumpAssist, which itself is a fork of arispoloway's JumpAssist.
 In this version, I restored speedrunning functionalities, fixed some bugs and streamlined syntax and code style. The idea is to keep updating this version and updating functionality to meet today's requirements.
 
+## Requirements
+To run JumpAssist in your server, you will need to install the following dependencies beforehand:
+- AreaSelector (https://github.com/maxijabase/sm-areaselector)
+- SaveLoc (https://github.com/JoinedSenses/SM-SaveLoc)
+
 ## Build Requirements:
 https://github.com/JoinedSenses/SM-JSLib  
 https://github.com/JoinedSenses/SM-SaveLoc  
