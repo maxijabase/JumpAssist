@@ -87,6 +87,7 @@ StringMap g_smCaptureAreaName;
 #include "jumpassist/hide.sp"
 #include "jumpassist/sl.sp"
 #include "jumpassist/speedrun.sp"
+#include "jumpassist/migrations.sp"
 
 public Plugin myinfo = {
   name = "[TF2] Jump Assist", 
