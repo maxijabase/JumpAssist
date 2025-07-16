@@ -2,8 +2,6 @@ float g_fStartLoc[3];
 float g_fStartAng[3];
 float g_fLoc[3];
 float g_fAng[3];
-float g_fBottomLoc[3];
-float g_fTopLoc[3];
 float g_fZoneBottom[32][3];
 float g_fZoneTop[32][3];
 float g_fZoneTimes[32][32];
@@ -18,11 +16,89 @@ int g_iHaloSprite;
 int g_iNumZones = 0;
 
 bool g_bSkippedCheckPointMessage[32];
+bool g_bWaitingForZoneSelection[MAXPLAYERS + 1];
 
 enum {
   LISTING_RANKED, 
   LISTING_GENERAL, 
   LISTING_PLAYER
+}
+
+// Initialize beam sprites on map start
+void InitializeSpeedrunAssets() {
+  g_iBeamSprite = PrecacheModel("materials/sprites/laser.vmt");
+  g_iHaloSprite = PrecacheModel("materials/sprites/halo01.vmt");
+}
+
+// Add AreaSelector forward handlers
+public void AreaSelector_OnAreaSelected(int client, AreaData area, float point1[3], float point2[3], float mins[3], float maxs[3], float center[3], float dimensions[3]) {
+  // Only handle if this client was waiting for zone selection
+  if (!g_bWaitingForZoneSelection[client]) {
+    return;
+  }
+
+  g_bWaitingForZoneSelection[client] = false;
+
+  // Convert AreaSelector data to the database format (x1,y1,z1,x2,y2,z2)
+  // We'll use the original point1 and point2 to maintain compatibility
+  char query[1024];
+  Format(query, sizeof(query), 
+    "INSERT INTO zones VALUES (null, '%d', '%s', '%f', '%f', '%f', '%f', '%f', '%f')", 
+    g_iNumZones, 
+    g_sCurrentMap, 
+    point1[0], point1[1], point1[2],    // x1, y1, z1
+    point2[0], point2[1], point2[2]     // x2, y2, z2
+  );
+
+  // Store the zone data in our arrays (convert to mins/maxs format for collision detection)
+  g_fZoneBottom[g_iNumZones][0] = mins[0];
+  g_fZoneBottom[g_iNumZones][1] = mins[1]; 
+  g_fZoneBottom[g_iNumZones][2] = mins[2];
+  
+  g_fZoneTop[g_iNumZones][0] = maxs[0];
+  g_fZoneTop[g_iNumZones][1] = maxs[1];
+  g_fZoneTop[g_iNumZones][2] = maxs[2];
+
+  // Save to database
+  g_Database.Query(SQL_OnZoneAdded, query, client);
+
+  // Show preview of the created zone
+  ShowZone(client, g_iNumZones);
+
+  // Provide feedback to the client
+  PrintToChat(client, "\x01[\x03JA\x01] Zone %d created successfully!", g_iNumZones);
+  
+  if (g_iNumZones == 0) {
+    PrintToChat(client, "\x01[\x03JA\x01] This is the \x05START\x01 zone");
+  } else if (g_iNumZones == 1) {
+    PrintToChat(client, "\x01[\x03JA\x01] This is the \x05FINISH\x01 zone");
+  } else {
+    PrintToChat(client, "\x01[\x03JA\x01] This is \x05checkpoint %d\x01", g_iNumZones - 1);
+  }
+
+  // Increment zone count after successful creation
+  g_iNumZones++;
+}
+
+public void AreaSelector_OnAreaCancelled(int client) {
+  if (g_bWaitingForZoneSelection[client]) {
+    g_bWaitingForZoneSelection[client] = false;
+    PrintToChat(client, "\x01[\x03JA\x01] Zone selection cancelled");
+  }
+}
+
+public void AreaSelector_OnDisplayUpdate(int client, int step, float currentPos[3], float heightOffset, float firstPoint[3], float dimensions[3], float volume) {
+  if (!g_bWaitingForZoneSelection[client]) {
+    return;
+  }
+
+  // Provide helpful hints during selection
+  if (step == 1) {
+    PrintHintText(client, "Step 1/2: Selecting first corner\nHeight offset: %.1f units", heightOffset);
+  } else if (step == 2) {
+    PrintHintText(client, "Step 2/2: Selecting second corner\nArea: %.1f x %.1f x %.1f\nVolume: %.0f units³", 
+      dimensions[0], dimensions[1], dimensions[2], volume);
+  }
 }
 
 void processSpeedrun(int client) {
@@ -138,6 +214,91 @@ public void SQL_OnSpeedrunSubmit(Handle owner, Handle hndl, const char[] error, 
   }
 }
 
+public Action cmdAddZone(int client, int args) {
+  if (!g_cvarSpeedrunEnabled.BoolValue) {
+    return Plugin_Continue;
+  }
+  if (g_Database == null) {
+    PrintToChat(client, "This feature is not supported without a database configuration");
+    return Plugin_Handled;
+  }
+  if (!client) {
+    ReplyToCommand(client, "\x01[\x03JA\x01] Cannot setup zones from rcon");
+    return Plugin_Handled;
+  }
+  if (IsClientObserver(client)) {
+    ReplyToCommand(client, "\x01[\x03JA\x01] Cannot setup zones as spectator");
+    return Plugin_Handled;
+  }
+  if (g_iNumZones >= 32) {
+    ReplyToCommand(client, "\x01[\x03JA\x01] Maximum zone count reached");
+    return Plugin_Handled;
+  }
+
+  // Check if AreaSelector is available
+  if (!LibraryExists("areaselector")) {
+    ReplyToCommand(client, "\x01[\x03JA\x01] AreaSelector library not available");
+    return Plugin_Handled;
+  }
+
+  // Check if client is already selecting
+  if (AreaSelector_IsSelecting(client)) {
+    ReplyToCommand(client, "\x01[\x03JA\x01] You are already selecting an area");
+    return Plugin_Handled;
+  }
+
+  // Start area selection
+  if (AreaSelector_Start(client)) {
+    g_bWaitingForZoneSelection[client] = true;
+    ReplyToCommand(client, "\x01[\x03JA\x01] Zone selection started. Double-click to select corners.");
+    ReplyToCommand(client, "\x01[\x03JA\x01] Use mouse wheel or attack buttons to adjust height.");
+  } else {
+    ReplyToCommand(client, "\x01[\x03JA\x01] Failed to start zone selection");
+  }
+
+  return Plugin_Handled;
+}
+
+public Action cmdCancelZoneSelection(int client, int args) {
+  if (!client) {
+    return Plugin_Handled;
+  }
+  
+  if (g_bWaitingForZoneSelection[client] && AreaSelector_IsSelecting(client)) {
+    AreaSelector_Cancel(client);
+    PrintToChat(client, "\x01[\x03JA\x01] Zone selection cancelled");
+  } else {
+    PrintToChat(client, "\x01[\x03JA\x01] You are not currently selecting a zone");
+  }
+  
+  return Plugin_Handled;
+}
+
+public void SQL_OnZoneAdded(Handle owner, Handle hndl, const char[] error, any data) {
+  int client = data;
+  if (hndl == null) {
+    LogError("OnZoneAdded() - Query failed! %s", error);
+    PrintToChat(client, "\x01[\x03JA\x01] Zone creation failed: Database error");
+    
+    // Revert the zone count since database save failed
+    if (g_iNumZones > 0) {
+      g_fZoneBottom[g_iNumZones] = NULL_VECTOR;
+      g_fZoneTop[g_iNumZones] = NULL_VECTOR;
+    }
+  } else if (error[0]) {
+    LogError("OnZoneAdded() - Database error: %s", error);
+    PrintToChat(client, "\x01[\x03JA\x01] Zone creation failed: %s", error);
+    
+    // Revert the zone count since database save failed  
+    if (g_iNumZones > 0) {
+      g_fZoneBottom[g_iNumZones] = NULL_VECTOR;
+      g_fZoneTop[g_iNumZones] = NULL_VECTOR;
+    }
+  } else {
+    PrintToChat(client, "\x01[\x03JA\x01] Zone successfully saved to database");
+  }
+}
+
 public Action cmdShowPR(int client, int args) {
   if (!g_cvarSpeedrunEnabled.BoolValue) {
     return Plugin_Continue;
@@ -240,9 +401,6 @@ public Action cmdShowPlayerInfo(int client, int args) {
     data.PushString(g_sCurrentMap);
     data.Push(0);
   }
-  // else {
-  // TAKE THE || 1 OUT OF THE IF STATEMENT WHEN YOU IMPLIMENT THIS
-  // }
   g_Database.Query(SQL_OnSpeedrunMultiListingSubmit, query, data);
   
   return Plugin_Continue;
@@ -324,7 +482,6 @@ public void SQL_OnSpeedrunMultiListingSubmit(Database db, DBResultSet results, c
     LogError("OnSpeedrunMultiListingSubmit() - Query failed! %s", error);
     return;
   }
-  //Data should be an array of [client, Listing type from enum, map, class]
   ArrayList array = view_as<ArrayList>(data);
   int client = array.Get(0);
   int multiType = array.Get(1);
@@ -378,7 +535,6 @@ Menu BuildMultiListingMenu(DBResultSet resultSet, int type, int class, char[] ma
   int listingClass;
   Menu menu = new Menu(Menu_MultiListing);
   
-  //NOT VERY EFFICIENT WITH THE WHOLE STEAMID THING
   for (int i = 0; i < resultSet.RowCount; i++) {
     resultSet.FetchRow();
     resultSet.FetchString(3, mapName, sizeof(mapName));
@@ -651,7 +807,7 @@ public Action cmdClearTimes(int client, int args) {
   }
   for (int i = 0; i < 32; i++) {
     if (g_fZoneTimes[i][g_iNumZones - 1] != 0.0) {
-      for (int j = 32; j < 32; j++) {
+      for (int j = 0; j < 32; j++) {
         g_fZoneTimes[i][j] = 0.0;
       }
     }
@@ -690,7 +846,7 @@ public Action cmdClearZones(int client, int args) {
   if (g_iNumZones) {
     for (int i = 0; i < 32; i++) {
       if (g_fZoneTimes[i][g_iNumZones - 1] != 0.0) {
-        for (int j = 32; j < 32; j++) {
+        for (int j = 0; j < 32; j++) {
           g_fZoneTimes[i][j] = 0.0;
         }
       }
@@ -730,10 +886,11 @@ public Action cmdShowZones(int client, int args) {
     ReplyToCommand(client, "\x01[\x03JA\x01] Cannot show zones as spectator");
     return Plugin_Handled;
   }
+  
+  PrintToChat(client, "\x01[\x03JA\x01] Showing %d zones for 5 seconds", g_iNumZones);
   for (int i = 0; i < g_iNumZones; i++) {
     ShowZone(client, i);
   }
-  ReplyToCommand(client, "\x01[\x03JA\x01] Showing all zones");
   
   return Plugin_Continue;
 }
@@ -812,7 +969,7 @@ void SpeedrunOnGameFrame() {
           PrintToChat(i, "\x01[\x03JA\x01] Speedrun started");
           g_iNextCheckPoint[i] = 1;
           g_bSkippedCheckPointMessage[i] = false;
-          g_fZoneTimes[i][j] = GetEngineTime();
+          g_fZoneTimes[i][0] = GetEngineTime();
         }
         if (IsInZone(i, 0)) {
           g_iLastFrameInStartZone[i] = true;
@@ -842,6 +999,7 @@ void ClearMapSpeedrunInfo() {
     g_iProcessingClass[i] = 0;
     g_iLastFrameInStartZone[i] = false;
     g_iSpeedrunStatus[i] = 0;
+    g_bWaitingForZoneSelection[i] = false;
   }
   for (int j = 0; j < 9; j++) {
     g_fRecordTime[j] = 99999999.99;
@@ -855,9 +1013,11 @@ void LoadMapSpeedrunInfo() {
   char query[1024] = "";
   
   ClearMapSpeedrunInfo();
+  InitializeSpeedrunAssets(); // Initialize beam sprites
+  
   Format(query, sizeof(query), "SELECT x, y, z, xang, yang, zang FROM startlocs WHERE MapName='%s'", g_sCurrentMap);
   g_Database.Query(SQL_OnMapStartLocationLoad, query, 0);
-  Format(query, sizeof(query), "SELECT x1, y1, z1, x2, y2, z2 FROM zones WHERE MapName='%s' ORDER BY 'number' ASC", g_sCurrentMap);
+  Format(query, sizeof(query), "SELECT x1, y1, z1, x2, y2, z2 FROM zones WHERE MapName='%s' ORDER BY Number ASC", g_sCurrentMap);
   g_Database.Query(SQL_OnMapZonesLoad, query, 0);
 }
 
@@ -870,9 +1030,20 @@ public void SQL_OnMapZonesLoad(Database db, DBResultSet results, const char[] er
     g_iNumZones = 0;
     for (g_iNumZones = 0; g_iNumZones < numRows; g_iNumZones++) {
       results.FetchRow();
+      
+      // Read the two corner points from database
+      float point1[3], point2[3];
+      point1[0] = results.FetchFloat(0); // x1
+      point1[1] = results.FetchFloat(1); // y1
+      point1[2] = results.FetchFloat(2); // z1
+      point2[0] = results.FetchFloat(3); // x2
+      point2[1] = results.FetchFloat(4); // y2
+      point2[2] = results.FetchFloat(5); // z2
+      
+      // Calculate mins and maxs for collision detection
       for (int i = 0; i < 3; i++) {
-        g_fZoneBottom[g_iNumZones][i] = results.FetchFloat(i);
-        g_fZoneTop[g_iNumZones][i] = results.FetchFloat(i + 3);
+        g_fZoneBottom[g_iNumZones][i] = (point1[i] < point2[i]) ? point1[i] : point2[i];
+        g_fZoneTop[g_iNumZones][i] = (point1[i] > point2[i]) ? point1[i] : point2[i];
       }
     }
     char query[1024] = "";
@@ -881,7 +1052,6 @@ public void SQL_OnMapZonesLoad(Database db, DBResultSet results, const char[] er
       g_Database.Query(SQL_OnRecordLoad, query, i);
     }
   }
-  // else { }
 }
 
 public void SQL_OnRecordLoad(Database db, DBResultSet results, const char[] error, any data) {
@@ -897,7 +1067,6 @@ public void SQL_OnRecordLoad(Database db, DBResultSet results, const char[] erro
       g_fRecordTime[class] = t;
     }
   }
-  // else { }
 }
 
 public void SQL_OnMapStartLocationLoad(Database db, DBResultSet results, const char[] error, any data) {
@@ -910,83 +1079,6 @@ public void SQL_OnMapStartLocationLoad(Database db, DBResultSet results, const c
       g_fStartLoc[i] = results.FetchFloat(i);
       g_fStartAng[i] = results.FetchFloat(i + 3);
     }
-  }
-  // else { }
-}
-
-public Action cmdAddZone(int client, int args) {
-  if (!g_cvarSpeedrunEnabled.BoolValue) {
-    return Plugin_Continue;
-  }
-  if (g_Database == null) {
-    PrintToChat(client, "This feature is not supported without a database configuration");
-    return Plugin_Handled;
-  }
-  if (!client) {
-    ReplyToCommand(client, "\x01[\x03JA\x01] Cannot setup corners from rcon");
-    return Plugin_Handled;
-  }
-  if (IsClientObserver(client)) {
-    ReplyToCommand(client, "\x01[\x03JA\x01] Cannot setup corners as spectator");
-    return Plugin_Handled;
-  }
-  if (g_iNumZones == 32) {
-    ReplyToCommand(client, "\x01[\x03JA\x01] Maximum zone count reached");
-    return Plugin_Handled;
-  }
-  float start[3];
-  float angle[3];
-  float loc[3];
-  
-  GetClientEyePosition(client, start);
-  GetClientEyeAngles(client, angle);
-  TR_TraceRayFilter(start, angle, MASK_SOLID, RayType_Infinite, TraceEntityFilterPlayer, client);
-  if (TR_DidHit(null)) {
-    TR_GetEndPosition(loc, null);
-  }
-  if (loc[0] == 0.0) {
-    ReplyToCommand(client, "\x01[\x04JT\x01] Invalid location");
-    return Plugin_Handled;
-  }
-  if (g_fBottomLoc[0] == 0.0 && g_fTopLoc[0] == 0.0) {
-    g_fBottomLoc = loc;
-  }
-  else {
-    if (loc[2] < g_fBottomLoc[2]) {
-      g_fTopLoc = g_fBottomLoc;
-      g_fBottomLoc = loc;
-    }
-    else {
-      g_fTopLoc = loc;
-    }
-    char query[1024];
-    
-    Format(query, sizeof(query), "INSERT INTO zones VALUES (null, '%d', '%s', '%f', '%f', '%f', '%f', '%f', '%f')", g_iNumZones, g_sCurrentMap, g_fBottomLoc[0], g_fBottomLoc[1], g_fBottomLoc[2], g_fTopLoc[0], g_fTopLoc[1], g_fTopLoc[2]);
-    g_fZoneBottom[g_iNumZones] = g_fBottomLoc;
-    g_fZoneTop[g_iNumZones] = g_fTopLoc;
-    g_fBottomLoc = NULL_VECTOR;
-    g_fTopLoc = NULL_VECTOR;
-    g_Database.Query(SQL_OnZoneAdded, query, client);
-  }
-  ReplyToCommand(client, "\x01[\x03JA\x01] Corner successfully selected");
-  
-  return Plugin_Continue;
-}
-
-public void SQL_OnZoneAdded(Handle owner, Handle hndl, const char[] error, any data) {
-  int client = data;
-  if (hndl == null) {
-    LogError("OnCheckPointAdded() - Query failed! %s", error);
-  }
-  else if (!error[0]) {
-    PrintToChat(client, "\x01[\x03JA\x01] Zone creation was successful");
-    ShowZone(client, g_iNumZones);
-    g_iNumZones++;
-  }
-  else {
-    PrintToChat(client, "\x01[\x03JA\x01] Zone creation failed");
-    g_fZoneBottom[g_iNumZones] = NULL_VECTOR;
-    g_fZoneTop[g_iNumZones] = NULL_VECTOR;
   }
 }
 
@@ -1055,17 +1147,11 @@ public void SQL_OnStartLocationSet(Database db, DBResultSet results, const char[
     g_fAng = NULL_VECTOR;
   }
 }
-/*public Action cmdTest(int client, int args) {
-	char testString[64];
-	Format(testString, sizeof(testString), "rush");
-	PrintToServer(testString[3]);
-}*/
 
 void GetFullMapName(char[] inputMapName, char[] output, int outputLen) {
   char baseJump[6] = "jump_";
   char toReturn[6];
 
-  // Substring magic
   strcopy(toReturn, 6, inputMapName);
   if (StrEqual(toReturn, baseJump, false)) {
     Format(output, outputLen, "%s", inputMapName);
@@ -1128,51 +1214,30 @@ bool IsInZone(int client, int zone) {
 }
 
 bool IsInRegion(int client, float bottom[3], float upper[3]) {
-  float f[3];
-  float e[3];
-  float end1[3];
-  float end2[3];
+  float playerPos[3];
+  float playerEye[3];
   
-  GetEntPropVector(client, Prop_Data, "m_vecOrigin", f);
-  GetClientEyePosition(client, e);
-  if (upper[0] < bottom[0]) {
-    end1[0] = upper[0];
-    end2[0] = bottom[0];
+  GetEntPropVector(client, Prop_Data, "m_vecOrigin", playerPos);
+  GetClientEyePosition(client, playerEye);
+  
+  // Calculate proper mins/maxs
+  float mins[3], maxs[3];
+  for (int i = 0; i < 3; i++) {
+    mins[i] = (bottom[i] < upper[i]) ? bottom[i] : upper[i];
+    maxs[i] = (bottom[i] > upper[i]) ? bottom[i] : upper[i];
   }
-  else {
-    end1[0] = bottom[0];
-    end2[0] = upper[0];
-  }
-  if (upper[1] < bottom[1]) {
-    end1[1] = upper[1];
-    end2[1] = bottom[1];
-  }
-  else {
-    end1[1] = bottom[1];
-    end2[1] = upper[1];
-  }
-  if (upper[2] < bottom[2]) {
-    end1[2] = upper[2];
-    end2[2] = bottom[2];
-  }
-  else {
-    end1[2] = bottom[2];
-    end2[2] = upper[2];
-  }
-  if (f[0] > end1[0] && end2[0] > f[0] && f[1] > end1[1] && end2[1] > f[1] && f[2] > end1[2] && end2[2] > f[2]) {
-    return true;
-  }
-  if (e[0] > end1[0] && end2[0] > e[0] && e[1] > end1[1] && end2[1] > e[1] && e[2] > end1[2] && end2[2] > e[2]) {
-    return true;
-  }
-  return false;
-}
-
-bool TraceEntityFilterPlayer(int entity, int contentsMask, any data) {
-  return entity > MaxClients;
+  
+  // Check both player origin and eye position
+  return (AreaSelector_IsPointInArea(playerPos, mins, maxs) || 
+          AreaSelector_IsPointInArea(playerEye, mins, maxs));
 }
 
 void ShowZone(int client, int zone) {
+  if (g_iBeamSprite <= 0 || g_iHaloSprite <= 0) {
+    PrintToChat(client, "\x01[\x03JA\x01] Beam sprites not loaded");
+    return;
+  }
+  
   Effect_DrawBeamBoxToClient(client, g_fZoneBottom[zone], g_fZoneTop[zone], g_iBeamSprite, g_iHaloSprite, 0, 30);
 }
 
@@ -1254,4 +1319,4 @@ void Array_Copy(const any[] array, any[] newArray, int size) {
   for (int i = 0; i < size; i++) {
     newArray[i] = array[i];
   }
-} 
+}

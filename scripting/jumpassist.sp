@@ -16,6 +16,7 @@
 #include <saveloc>
 #define REQUIRE_PLUGIN
 #include <jslib>
+#include <areaselector>
 
 bool g_bLateLoad;
 bool g_bFeaturesEnabled[MAXPLAYERS + 1];
@@ -178,6 +179,7 @@ public void OnPluginStart() {
   // Speedruns
   RegAdminCmd("sm_setstart", cmdSetStart, ADMFLAG_GENERIC, "Sets the map start location for speedrunning");
   RegAdminCmd("sm_addzone", cmdAddZone, ADMFLAG_GENERIC, "Adds a checkpoint or end zone for speedrunning");
+  RegAdminCmd("sm_cancelzone", cmdCancelZoneSelection, ADMFLAG_GENERIC, "Cancel current zone selection");
   RegAdminCmd("sm_clearzones", cmdClearZones, ADMFLAG_GENERIC, "Deletes all zones on the current map");
   RegAdminCmd("sm_cleartimes", cmdClearTimes, ADMFLAG_GENERIC, "Deletes all times on the current map");
   RegAdminCmd("sm_sr_force_reload", cmdSpeedrunForceReload, ADMFLAG_GENERIC, "Deletes all times on the current map");
@@ -288,6 +290,9 @@ public void OnPluginStart() {
 
 public void OnAllPluginsLoaded() {
   g_bSaveLoc = LibraryExists("saveloc");
+  if (!LibraryExists("areaselector")) {
+    SetFailState("AreaSelector dependency missing");
+  }
 }
 
 public void OnPluginEnd() {
@@ -418,6 +423,10 @@ public void OnClientPostAdminCheck(int client) {
   if (g_cvarSpeedrunEnabled.BoolValue) {
     UpdateSteamID(client);
   }
+}
+
+public void OnClientDisconnect(int client) {
+  g_bWaitingForZoneSelection[client] = false;
 }
 
 public void SDKHook_OnWeaponEquipPost(int client, int weapon) {
@@ -1388,7 +1397,8 @@ void SetPlayerDefaults(int client) {
   g_bRaceLocked[client] = false;
   g_bExplosions[client] = false;
   g_bHideMessage[client] = false;
-  
+  g_bWaitingForZoneSelection[client] = false;
+
   EraseLocs(client);
   SetSkeysDefaults(client);
   ClearGoToArray(client);
