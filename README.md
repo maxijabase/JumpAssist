@@ -5,8 +5,8 @@ In this version, I restored speedrunning functionalities, fixed some bugs and st
 
 ## Requirements
 To run JumpAssist in your server, you will need to install the following dependencies beforehand:
-- AreaSelector (https://github.com/maxijabase/sm-areaselector)
-- SaveLoc (https://github.com/JoinedSenses/SM-SaveLoc)
+- (Required) AreaSelector (https://github.com/maxijabase/sm-areaselector)
+- (Optional) SaveLoc (https://github.com/JoinedSenses/SM-SaveLoc)
 
 ## Build Requirements:
 https://github.com/JoinedSenses/SM-JSLib  

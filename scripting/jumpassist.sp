@@ -291,7 +291,7 @@ public void OnPluginStart() {
 public void OnAllPluginsLoaded() {
   g_bSaveLoc = LibraryExists("saveloc");
   if (!LibraryExists("areaselector")) {
-    SetFailState("AreaSelector dependency missing");
+    SetFailState("AreaSelector dependency missing. Please install: github.com/maxijabase/sm-areaselector");
   }
 }
 
