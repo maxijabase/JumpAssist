@@ -24,6 +24,8 @@ enum {
   LISTING_PLAYER
 }
 
+Handle g_hWeaponBlockTimer[MAXPLAYERS + 1];
+
 // Initialize beam sprites on map start
 void InitializeSpeedrunAssets() {
   g_iBeamSprite = PrecacheModel("materials/sprites/laser.vmt");
@@ -38,6 +40,12 @@ public void AreaSelector_OnAreaSelected(int client, AreaData area, float point1[
   }
 
   g_bWaitingForZoneSelection[client] = false;
+
+  // Stop blocking weapons
+  if (g_hWeaponBlockTimer[client] != null) {
+    delete g_hWeaponBlockTimer[client];
+    g_hWeaponBlockTimer[client] = null;
+  }
 
   // Convert AreaSelector data to the database format (x1,y1,z1,x2,y2,z2)
   // We'll use the original point1 and point2 to maintain compatibility
@@ -83,6 +91,11 @@ public void AreaSelector_OnAreaSelected(int client, AreaData area, float point1[
 public void AreaSelector_OnAreaCancelled(int client) {
   if (g_bWaitingForZoneSelection[client]) {
     g_bWaitingForZoneSelection[client] = false;
+    // Stop blocking weapons
+    if (g_hWeaponBlockTimer[client] != null) {
+      delete g_hWeaponBlockTimer[client];
+      g_hWeaponBlockTimer[client] = null;
+    }
     PrintToChat(client, "\x01[\x03JA\x01] Zone selection cancelled");
   }
 }
@@ -250,6 +263,8 @@ public Action cmdAddZone(int client, int args) {
   // Start area selection
   if (AreaSelector_Start(client)) {
     g_bWaitingForZoneSelection[client] = true;
+    // Start blocking weapons every 1 second
+    g_hWeaponBlockTimer[client] = CreateTimer(1.0, Timer_BlockWeapons, client, TIMER_REPEAT);
     ReplyToCommand(client, "\x01[\x03JA\x01] Zone selection started. Double-click to select corners.");
     ReplyToCommand(client, "\x01[\x03JA\x01] Use mouse wheel or attack buttons to adjust height.");
   } else {
@@ -257,6 +272,16 @@ public Action cmdAddZone(int client, int args) {
   }
 
   return Plugin_Handled;
+}
+
+public Action Timer_BlockWeapons(Handle timer, int client) {
+  if (!IsClientInGame(client) || !g_bWaitingForZoneSelection[client] || !AreaSelector_IsSelecting(client)) {
+    g_hWeaponBlockTimer[client] = null;
+    return Plugin_Stop;
+  }
+  
+  BlockWeaponAttacks(client);
+  return Plugin_Continue;
 }
 
 public Action cmdCancelZoneSelection(int client, int args) {
@@ -1000,6 +1025,10 @@ void ClearMapSpeedrunInfo() {
     g_iLastFrameInStartZone[i] = false;
     g_iSpeedrunStatus[i] = 0;
     g_bWaitingForZoneSelection[i] = false;
+    if (g_hWeaponBlockTimer[i] != null) {
+      delete g_hWeaponBlockTimer[i];
+      g_hWeaponBlockTimer[i] = null;
+    }
   }
   for (int j = 0; j < 9; j++) {
     g_fRecordTime[j] = 99999999.99;
@@ -1318,5 +1347,22 @@ void Effect_DrawBeamBox(
 void Array_Copy(const any[] array, any[] newArray, int size) {
   for (int i = 0; i < size; i++) {
     newArray[i] = array[i];
+  }
+}
+
+void BlockWeaponAttacks(int client) {
+  if (!IsValidClient(client) || !IsPlayerAlive(client)) {
+    return;
+  }
+  
+  float engineTime = GetGameTime();
+  
+  // Block all weapon slots from attacking for 1.1 seconds
+  for (int i = 0; i <= 2; i++) {
+    int weapon = GetPlayerWeaponSlot(client, i);
+    if (IsValidEntity(weapon)) {
+      SetEntPropFloat(weapon, Prop_Send, "m_flNextPrimaryAttack", engineTime + 1.1);
+      SetEntPropFloat(weapon, Prop_Send, "m_flNextSecondaryAttack", engineTime + 1.1);
+    }
   }
 }
